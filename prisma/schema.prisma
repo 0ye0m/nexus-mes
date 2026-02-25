@@ -1,0 +1,119 @@
+// This is your Prisma schema file for EV Manufacturing Management System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User Management
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      String   @default("production_manager") // admin, production_manager, quality_inspector
+  status    String   @default("active") // active, inactive
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Inventory/Materials
+model Material {
+  id              String   @id @default(cuid())
+  name            String
+  sku             String   @unique
+  category        String   // battery, motor, controller, chassis, tires, interior, electronics
+  quantity        Int      @default(0)
+  unit            String   @default("units")
+  minStock        Int      @default(0)
+  unitCost        Float    @default(0)
+  supplier        String
+  supplierContact String?
+  lastUpdated     DateTime @default(now())
+  createdAt       DateTime @default(now())
+}
+
+// Production Schedules
+model ProductionSchedule {
+  id                String   @id @default(cuid())
+  vehicleModel      String   // EV-Compact, EV-Sedan, EV-SUV, EV-Premium
+  scheduleType      String   // daily, weekly, monthly
+  targetQuantity    Int      @default(0)
+  completedQuantity Int      @default(0)
+  startDate         DateTime
+  endDate           DateTime?
+  assignedMachines  String   // JSON array stored as string
+  assignedLabor     Int      @default(0)
+  status            String   @default("pending") // pending, in_progress, completed
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// Battery & Powertrain Assemblies
+model Assembly {
+  id                String   @id @default(cuid())
+  vehicleId         String   @unique
+  vehicleModel      String
+  batteryType       String   // Li-ion 40kWh, Li-ion 60kWh, Li-ion 80kWh
+  motorSpec         String   // 100kW, 150kW, 200kW
+  controllerModel   String
+  status            String   @default("in_assembly") // in_assembly, testing, completed
+  assemblyStartDate DateTime @default(now())
+  completionDate    DateTime?
+  assembledBy       String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// Quality Inspections
+model Inspection {
+  id                 String   @id @default(cuid())
+  vehicleId          String
+  vehicleModel       String
+  inspectionType     String   // visual, electrical, performance, safety
+  result             String   // pass, fail
+  defectDescription  String?
+  inspector          String
+  inspectionDate     DateTime @default(now())
+  approved           Boolean  @default(false)
+  createdAt          DateTime @default(now())
+}
+
+// Production Costs
+model ProductionCost {
+  id            String   @id @default(cuid())
+  vehicleId     String
+  vehicleModel  String
+  materialCost  Float    @default(0)
+  laborCost     Float    @default(0)
+  overheadCost  Float    @default(0)
+  totalCost     Float    @default(0)
+  calculatedAt  DateTime @default(now())
+  createdAt     DateTime @default(now())
+}
+
+// Performance Metrics
+model PerformanceMetric {
+  id                String   @id @default(cuid())
+  date              DateTime @unique
+  efficiency        Float    @default(0)
+  productivity      Float    @default(0)
+  qualityRate       Float    @default(0)
+  vehiclesProduced  Int      @default(0)
+  defectCount       Int      @default(0)
+  createdAt         DateTime @default(now())
+}
+
+// Activity Log
+model Activity {
+  id        String   @id @default(cuid())
+  action    String
+  details   String
+  type      String   // success, warning, error, info
+  userId    String?
+  createdAt DateTime @default(now())
+}
