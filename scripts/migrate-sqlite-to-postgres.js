@@ -1,125 +1,93 @@
 /**
  * migrate-sqlite-to-postgres.js
  *
- * Usage:
- * 1. Install deps: `npm install better-sqlite3 @prisma/client`
- * 2. Set `DATABASE_URL` in your local `.env` to your Supabase Postgres URL
- * 3. Run `npx prisma generate` then `node scripts/migrate-sqlite-to-postgres.js`
- *
- * This script reads rows from the local SQLite DB at `./db/custom.db`
- * and inserts them into the Postgres DB via Prisma. It uses `createMany`
- * with `skipDuplicates` to avoid duplicate inserts.
+ * Migrates data from SQLite (./db/custom.db)
+ * to Supabase PostgreSQL via Prisma.
  */
 
-const path = require('path')
-const Database = require('better-sqlite3')
-const { PrismaClient } = require('@prisma/client')
+const path = require("path");
+const Database = require("better-sqlite3");
+const { PrismaClient } = require("@prisma/client");
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
-async function main() {
-  const sqlitePath = path.join(__dirname, '..', 'db', 'custom.db')
-  const db = new Database(sqlitePath, { readonly: true })
+/**
+ * Convert SQLite row values to Prisma-compatible values
+ */
+const mapRows = (rows) =>
+  rows.map((row) => {
+    const newRow = { ...row };
 
-  const mapRows = (rows) => rows.map(r => {
-    // Convert numeric timestamps to JS Date, and leave strings as-is
-    Object.keys(r).forEach(k => {
-      if (r[k] && typeof r[k] === 'string') {
-        // attempt ISO date parsing for columns ending with Date/At
-        if (/Date$|At$/i.test(k)) {
-          const d = new Date(r[k])
-          if (!isNaN(d)) r[k] = d
-        }
+    Object.keys(newRow).forEach((key) => {
+      const value = newRow[key];
+
+      // ✅ Convert numeric timestamps → Date
+      if (typeof value === "number" && value > 1000000000000) {
+        newRow[key] = new Date(value);
       }
-    })
-    return r
-  })
 
+      // ✅ Convert ISO string dates → Date
+      if (typeof value === "string" && /Date$|At$/i.test(key)) {
+        const parsed = new Date(value);
+        if (!isNaN(parsed)) newRow[key] = parsed;
+      }
+
+      // ✅ Convert ONLY known boolean field
+      if (key === "approved") {
+        newRow[key] = Boolean(value);
+      }
+    });
+
+    return newRow;
+  });
+
+async function importTable(tableName, prismaModel) {
   try {
-    console.log('Reading SQLite tables...')
+    const sqlitePath = path.join(__dirname, "..", "db", "custom.db");
+    const db = new Database(sqlitePath, { readonly: true });
 
-    // Users
-    try {
-      const users = db.prepare('SELECT * FROM "User"').all()
-      if (users.length) {
-        console.log(`Importing ${users.length} users`)
-        await prisma.user.createMany({ data: mapRows(users), skipDuplicates: true })
-      }
-    } catch (e) { console.warn('No User table or read error:', e.message) }
+    const rows = db.prepare(`SELECT * FROM "${tableName}"`).all();
 
-    // Materials
-    try {
-      const materials = db.prepare('SELECT * FROM "Material"').all()
-      if (materials.length) {
-        console.log(`Importing ${materials.length} materials`)
-        await prisma.material.createMany({ data: mapRows(materials), skipDuplicates: true })
-      }
-    } catch (e) { console.warn('No Material table or read error:', e.message) }
+    if (!rows.length) {
+      console.log(`No data found in ${tableName}`);
+      db.close();
+      return;
+    }
 
-    // ProductionSchedule
-    try {
-      const schedules = db.prepare('SELECT * FROM "ProductionSchedule"').all()
-      if (schedules.length) {
-        console.log(`Importing ${schedules.length} schedules`)
-        await prisma.productionSchedule.createMany({ data: mapRows(schedules), skipDuplicates: true })
-      }
-    } catch (e) { console.warn('No ProductionSchedule table or read error:', e.message) }
+    console.log(`Importing ${rows.length} ${tableName} records...`);
 
-    // Assembly
-    try {
-      const assemblies = db.prepare('SELECT * FROM "Assembly"').all()
-      if (assemblies.length) {
-        console.log(`Importing ${assemblies.length} assemblies`)
-        await prisma.assembly.createMany({ data: mapRows(assemblies), skipDuplicates: true })
-      }
-    } catch (e) { console.warn('No Assembly table or read error:', e.message) }
+    await prisma[prismaModel].createMany({
+      data: mapRows(rows),
+      skipDuplicates: true,
+    });
 
-    // Inspection
-    try {
-      const inspections = db.prepare('SELECT * FROM "Inspection"').all()
-      if (inspections.length) {
-        console.log(`Importing ${inspections.length} inspections`)
-        await prisma.inspection.createMany({ data: mapRows(inspections), skipDuplicates: true })
-      }
-    } catch (e) { console.warn('No Inspection table or read error:', e.message) }
-
-    // ProductionCost
-    try {
-      const costs = db.prepare('SELECT * FROM "ProductionCost"').all()
-      if (costs.length) {
-        console.log(`Importing ${costs.length} production costs`)
-        await prisma.productionCost.createMany({ data: mapRows(costs), skipDuplicates: true })
-      }
-    } catch (e) { console.warn('No ProductionCost table or read error:', e.message) }
-
-    // PerformanceMetric
-    try {
-      const metrics = db.prepare('SELECT * FROM "PerformanceMetric"').all()
-      if (metrics.length) {
-        console.log(`Importing ${metrics.length} performance metrics`)
-        await prisma.performanceMetric.createMany({ data: mapRows(metrics), skipDuplicates: true })
-      }
-    } catch (e) { console.warn('No PerformanceMetric table or read error:', e.message) }
-
-    // Activity
-    try {
-      const activities = db.prepare('SELECT * FROM "Activity"').all()
-      if (activities.length) {
-        console.log(`Importing ${activities.length} activities`)
-        await prisma.activity.createMany({ data: mapRows(activities), skipDuplicates: true })
-      }
-    } catch (e) { console.warn('No Activity table or read error:', e.message) }
-
-    console.log('Data import finished.')
+    console.log(`✅ ${tableName} imported successfully`);
+    db.close();
   } catch (err) {
-    console.error('Migration error:', err)
-  } finally {
-    await prisma.$disconnect()
-    db.close()
+    console.error(`❌ Error importing ${tableName}:`, err.message);
   }
 }
 
-main().catch(e => {
-  console.error(e)
-  process.exit(1)
-})
+async function main() {
+  console.log("🚀 Starting SQLite → Supabase migration...\n");
+
+  await importTable("User", "user");
+  await importTable("Material", "material");
+  await importTable("ProductionSchedule", "productionSchedule");
+  await importTable("Assembly", "assembly");
+  await importTable("Inspection", "inspection");
+  await importTable("ProductionCost", "productionCost");
+  await importTable("PerformanceMetric", "performanceMetric");
+  await importTable("Activity", "activity");
+
+  console.log("\n🎉 Migration completed.");
+}
+
+main()
+  .catch((err) => {
+    console.error("Migration failed:", err);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
