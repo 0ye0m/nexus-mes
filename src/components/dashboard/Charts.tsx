@@ -244,7 +244,7 @@ export function CostBreakdownChart({ data }: CostBreakdownProps) {
           <div className="h-full flex items-center justify-center text-gray-400 text-sm">
             No cost data available
           </div>
-        )}
+        )}      
       </div>
     </ChartContainer>
   );
