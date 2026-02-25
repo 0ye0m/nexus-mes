@@ -185,44 +185,65 @@ interface CostBreakdownProps {
 
 export function CostBreakdownChart({ data }: CostBreakdownProps) {
   const total = data.material + data.labor + data.overhead;
-  const chartData = [
-    { name: 'Material', value: total > 0 ? Math.round((data.material / total) * 100) : 0, fill: '#2563EB' },
-    { name: 'Labor', value: total > 0 ? Math.round((data.labor / total) * 100) : 0, fill: '#16A34A' },
-    { name: 'Overhead', value: total > 0 ? Math.round((data.overhead / total) * 100) : 0, fill: '#D97706' },
+
+  const rawData = [
+    { name: 'Material', value: data.material, fill: '#2563EB' },
+    { name: 'Labor', value: data.labor, fill: '#16A34A' },
+    { name: 'Overhead', value: data.overhead, fill: '#D97706' },
   ];
+
+  const chartData =
+    total > 0
+      ? rawData.map((item) => ({
+          ...item,
+          percent: Number(((item.value / total) * 100).toFixed(1)),
+        }))
+      : [];
 
   return (
     <ChartContainer title="Cost Breakdown">
-      <div className="h-64 flex items-center justify-center">
+      <div className="h-72">
         {total > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={chartData}
+                dataKey="value"
+                nameKey="name"
                 cx="50%"
                 cy="50%"
-                outerRadius={90}
-                paddingAngle={2}
-                dataKey="value"
-                label={({ name, value }) => `${name}: ${value}%`}
-                labelLine={false}
+                innerRadius={65}
+                outerRadius={95}
+                paddingAngle={3}
               >
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.fill} />
                 ))}
               </Pie>
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'white', 
+
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'white',
                   border: '1px solid #E5E7EB',
-                  borderRadius: '8px'
+                  borderRadius: '8px',
                 }}
-                formatter={(value) => [`${value}%`, '']}
+                formatter={(value: number) => {
+                  const percent = ((value / total) * 100).toFixed(1);
+                  return [`₹${value.toLocaleString()} (${percent}%)`, ''];
+                }}
+              />
+
+              <Legend
+                verticalAlign="bottom"
+                height={36}
+                iconType="circle"
               />
             </PieChart>
           </ResponsiveContainer>
         ) : (
-          <div className="text-gray-400 text-sm">No cost data available</div>
+          <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+            No cost data available
+          </div>
         )}
       </div>
     </ChartContainer>
