@@ -143,9 +143,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       )}
       <div
         className={`
-          fixed top-0 left-0 bottom-0 w-64 z-50 transform transition-transform duration-300 md:hidden
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
+    fixed top-0 left-0 bottom-0 w-64 z-50 transform transition-transform duration-300 md:hidden
+    bg-sidebar 
+    ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+  `}
       >
         {sidebarContent}
       </div>
