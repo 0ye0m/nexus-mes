@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -9,12 +10,13 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "EV Manufacturing Management System",
-  description: "Management Information System for Electric Vehicle Production - Track production, inventory, quality control, and costs.",
-  keywords: ["EV", "Electric Vehicle", "Manufacturing", "MIS", "Production", "Quality Control"],
-  authors: [{ name: "EV Manufacturing Team" }],
-  icons: {
-    icon: "/logo.svg",
-  },
+  description: "Management Information System for Electric Vehicle Production",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -24,8 +26,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} antialiased`} style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif" }}>
-        {children}
+      <body className={`${inter.variable} antialiased`}>
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

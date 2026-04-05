@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAppStore } from '@/store/appStore';
-import { Download, FileText, Package, CheckCircle, DollarSign, Loader2 } from 'lucide-react';
+import { Download, FileText, Package, CheckCircle, DollarSign, Loader2, TrendingUp, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Reports() {
@@ -15,7 +15,6 @@ export default function Reports() {
 
   const downloadCSV = (type: string) => {
     let headers: string[] = [], rows: any[][] = [], filename = '';
-
     switch (type) {
       case 'production':
         headers = ['ID', 'Model', 'Type', 'Target', 'Completed', 'Progress %', 'Status', 'Start Date', 'End Date'];
@@ -38,7 +37,6 @@ export default function Reports() {
         filename = 'cost_report';
         break;
     }
-
     const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -59,61 +57,48 @@ export default function Reports() {
   };
 
   const isLoading = loading.schedules || loading.materials || loading.inspections || loading.costs;
-
-  if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="animate-spin text-blue-600" size={32} /></div>;
+  if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="animate-spin text-primary" size={32} /></div>;
 
   const reports = [
-    { id: 'production', title: 'Production Report', desc: 'Vehicle production data including schedules and completion rates', icon: <FileText size={24} />, stats: getReportStats('production') },
-    { id: 'inventory', title: 'Inventory Report', desc: 'Current stock levels, low stock alerts, and supplier info', icon: <Package size={24} />, stats: getReportStats('inventory') },
-    { id: 'quality', title: 'Quality Report', desc: 'Inspection results, pass/fail rates, and defect analysis', icon: <CheckCircle size={24} />, stats: getReportStats('quality') },
-    { id: 'cost', title: 'Cost Report', desc: 'Production costs breakdown by vehicle model', icon: <DollarSign size={24} />, stats: getReportStats('cost') },
+    { id: 'production', title: 'Production Report', desc: 'Vehicle production data including schedules and completion rates', icon: FileText, color: 'bg-blue-100 text-blue-600', stats: getReportStats('production') },
+    { id: 'inventory', title: 'Inventory Report', desc: 'Current stock levels, low stock alerts, and supplier info', icon: Package, color: 'bg-green-100 text-green-600', stats: getReportStats('inventory') },
+    { id: 'quality', title: 'Quality Report', desc: 'Inspection results, pass/fail rates, and defect analysis', icon: CheckCircle, color: 'bg-purple-100 text-purple-600', stats: getReportStats('quality') },
+    { id: 'cost', title: 'Cost Report', desc: 'Production costs breakdown by vehicle model', icon: DollarSign, color: 'bg-orange-100 text-orange-600', stats: getReportStats('cost') },
   ];
 
   return (
     <div className="space-y-6">
-      <div><h1 className="text-xl font-semibold" style={{ color: '#111827' }}>Reports</h1><p className="text-sm mt-1" style={{ color: '#6B7280' }}>Generate and export manufacturing reports</p></div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {reports.map((report) => (
-          <div key={report.id} className="rounded-lg p-6" style={{ backgroundColor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center" style={{ color: '#2563EB' }}>{report.icon}</div>
-              <div><h3 className="font-semibold" style={{ color: '#111827' }}>{report.title}</h3><p className="text-sm mt-0.5" style={{ color: '#6B7280' }}>{report.desc}</p></div>
+      <div><h1 className="text-2xl font-bold text-foreground">Reports</h1><p className="text-muted-foreground mt-1">Generate and export manufacturing reports</p></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {reports.map((report) => {
+          const Icon = report.icon;
+          const stats = report.stats as any;
+          return (
+            <div key={report.id} className="bg-card rounded-xl p-6 shadow-sm border border-border hover:shadow-md transition-all">
+              <div className="flex items-start gap-4 mb-4">
+                <div className={`w-12 h-12 rounded-xl ${report.color} flex items-center justify-center`}><Icon size={24} /></div>
+                <div><h3 className="font-semibold text-foreground">{report.title}</h3><p className="text-sm text-muted-foreground">{report.desc}</p></div>
+              </div>
+              <div className="grid grid-cols-3 gap-3 mb-5 py-3 border-y border-border">
+                {report.id === 'production' && (<><div className="text-center"><p className="text-xl font-bold text-foreground">{stats.total}</p><p className="text-xs text-muted-foreground">Total</p></div><div className="text-center"><p className="text-xl font-bold text-green-600">{stats.completed}</p><p className="text-xs text-muted-foreground">Completed</p></div><div className="text-center"><p className="text-xl font-bold text-blue-600">{stats.inProgress}</p><p className="text-xs text-muted-foreground">In Progress</p></div></>)}
+                {report.id === 'inventory' && (<><div className="text-center"><p className="text-xl font-bold text-foreground">{stats.total}</p><p className="text-xs text-muted-foreground">Items</p></div><div className="text-center"><p className="text-xl font-bold text-orange-600">{stats.lowStock}</p><p className="text-xs text-muted-foreground">Low Stock</p></div><div className="text-center"><p className="text-xl font-bold text-blue-600">{formatCurrency(stats.totalValue)}</p><p className="text-xs text-muted-foreground">Value</p></div></>)}
+                {report.id === 'quality' && (<><div className="text-center"><p className="text-xl font-bold text-foreground">{stats.total}</p><p className="text-xs text-muted-foreground">Total</p></div><div className="text-center"><p className="text-xl font-bold text-green-600">{stats.passed}</p><p className="text-xs text-muted-foreground">Passed</p></div><div className="text-center"><p className="text-xl font-bold text-red-600">{stats.failed}</p><p className="text-xs text-muted-foreground">Failed</p></div></>)}
+                {report.id === 'cost' && (<><div className="text-center"><p className="text-xl font-bold text-foreground">{stats.total}</p><p className="text-xs text-muted-foreground">Records</p></div><div className="text-center"><p className="text-xl font-bold text-blue-600">{formatCurrency(stats.totalCost)}</p><p className="text-xs text-muted-foreground">Total</p></div><div className="text-center"><p className="text-xl font-bold text-purple-600">{formatCurrency(stats.avgCost)}</p><p className="text-xs text-muted-foreground">Avg</p></div></>)}
+              </div>
+              <button onClick={() => downloadCSV(report.id)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"><Download size={16} />Export as CSV</button>
             </div>
-            <div className="grid grid-cols-3 gap-4 mb-4 py-3 border-y" style={{ borderColor: '#E5E7EB' }}>
-              {report.id === 'production' && (<>
-                <div className="text-center"><p className="text-lg font-semibold" style={{ color: '#111827' }}>{(report.stats as any).total}</p><p className="text-xs" style={{ color: '#6B7280' }}>Total</p></div>
-                <div className="text-center"><p className="text-lg font-semibold text-green-600">{(report.stats as any).completed}</p><p className="text-xs" style={{ color: '#6B7280' }}>Completed</p></div>
-                <div className="text-center"><p className="text-lg font-semibold text-blue-600">{(report.stats as any).inProgress}</p><p className="text-xs" style={{ color: '#6B7280' }}>In Progress</p></div>
-              </>)}
-              {report.id === 'inventory' && (<>
-                <div className="text-center"><p className="text-lg font-semibold" style={{ color: '#111827' }}>{(report.stats as any).total}</p><p className="text-xs" style={{ color: '#6B7280' }}>Items</p></div>
-                <div className="text-center"><p className="text-lg font-semibold text-orange-600">{(report.stats as any).lowStock}</p><p className="text-xs" style={{ color: '#6B7280' }}>Low Stock</p></div>
-                <div className="text-center"><p className="text-lg font-semibold text-blue-600">{formatCurrency((report.stats as any).totalValue)}</p><p className="text-xs" style={{ color: '#6B7280' }}>Value</p></div>
-              </>)}
-              {report.id === 'quality' && (<>
-                <div className="text-center"><p className="text-lg font-semibold" style={{ color: '#111827' }}>{(report.stats as any).total}</p><p className="text-xs" style={{ color: '#6B7280' }}>Total</p></div>
-                <div className="text-center"><p className="text-lg font-semibold text-green-600">{(report.stats as any).passed}</p><p className="text-xs" style={{ color: '#6B7280' }}>Passed</p></div>
-                <div className="text-center"><p className="text-lg font-semibold text-red-600">{(report.stats as any).failed}</p><p className="text-xs" style={{ color: '#6B7280' }}>Failed</p></div>
-              </>)}
-              {report.id === 'cost' && (<>
-                <div className="text-center"><p className="text-lg font-semibold" style={{ color: '#111827' }}>{(report.stats as any).total}</p><p className="text-xs" style={{ color: '#6B7280' }}>Records</p></div>
-                <div className="text-center"><p className="text-lg font-semibold text-blue-600">{formatCurrency((report.stats as any).totalCost)}</p><p className="text-xs" style={{ color: '#6B7280' }}>Total</p></div>
-                <div className="text-center"><p className="text-lg font-semibold text-purple-600">{formatCurrency((report.stats as any).avgCost)}</p><p className="text-xs" style={{ color: '#6B7280' }}>Avg</p></div>
-              </>)}
-            </div>
-            <button onClick={() => downloadCSV(report.id)} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-white text-sm font-medium transition-colors hover:bg-blue-700" style={{ backgroundColor: '#2563EB' }}><Download size={18} />Export as CSV</button>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      <div className="rounded-lg p-6" style={{ backgroundColor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <h2 className="font-semibold mb-4" style={{ color: '#111827' }}>Quick Summary</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div><p className="text-sm" style={{ color: '#6B7280' }}>Total Vehicles in Production</p><p className="text-2xl font-semibold mt-1" style={{ color: '#111827' }}>{schedules.reduce((s, s2) => s + s2.targetQuantity, 0).toLocaleString()}</p></div>
-          <div><p className="text-sm" style={{ color: '#6B7280' }}>Completed Vehicles</p><p className="text-2xl font-semibold mt-1 text-green-600">{schedules.reduce((s, s2) => s + s2.completedQuantity, 0).toLocaleString()}</p></div>
-          <div><p className="text-sm" style={{ color: '#6B7280' }}>Overall Quality Rate</p><p className="text-2xl font-semibold mt-1 text-blue-600">{inspections.length > 0 ? ((inspections.filter(i => i.result === 'pass').length / inspections.length) * 100).toFixed(1) : 0}%</p></div>
-          <div><p className="text-sm" style={{ color: '#6B7280' }}>Inventory Value</p><p className="text-2xl font-semibold mt-1 text-purple-600">{formatCurrency(materials.reduce((s, m) => s + m.quantity * m.unitCost, 0))}</p></div>
+      {/* Quick Summary */}
+      <div className="bg-card rounded-xl p-6 shadow-sm border border-border">
+        <h2 className="font-semibold text-foreground mb-4">Quick Summary</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+          <div><p className="text-sm text-muted-foreground">Total Vehicles in Production</p><p className="text-2xl font-bold text-foreground">{schedules.reduce((s, s2) => s + s2.targetQuantity, 0).toLocaleString()}</p></div>
+          <div><p className="text-sm text-muted-foreground">Completed Vehicles</p><p className="text-2xl font-bold text-green-600">{schedules.reduce((s, s2) => s + s2.completedQuantity, 0).toLocaleString()}</p></div>
+          <div><p className="text-sm text-muted-foreground">Overall Quality Rate</p><p className="text-2xl font-bold text-blue-600">{inspections.length > 0 ? ((inspections.filter(i => i.result === 'pass').length / inspections.length) * 100).toFixed(1) : 0}%</p></div>
+          <div><p className="text-sm text-muted-foreground">Inventory Value</p><p className="text-2xl font-bold text-purple-600">{formatCurrency(materials.reduce((s, m) => s + m.quantity * m.unitCost, 0))}</p></div>
         </div>
       </div>
     </div>

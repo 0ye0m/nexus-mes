@@ -34,7 +34,7 @@ export default function Dashboard() {
   if (loading.dashboard) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -53,12 +53,12 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-xl font-semibold" style={{ color: '#111827' }}>Dashboard</h1>
-        <p className="text-sm mt-1" style={{ color: '#6B7280' }}>Overview of your manufacturing operations</p>
+        <h1 className="text-xl font-semibold text-foreground">Dashboard</h1>
+        <p className="text-sm text-muted-foreground mt-1">Overview of your manufacturing operations</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Vehicles Produced"
           value={summary.totalVehiclesProduced.toLocaleString()}
@@ -86,7 +86,7 @@ export default function Dashboard() {
       </div>
 
       {/* Secondary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           title="Total Production Cost"
           value={formatCurrency(summary.totalProductionCost)}
@@ -105,38 +105,35 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Charts Row 1 - stack on mobile */}
+      <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6">
         <ProductionTrendChart data={dashboard?.productionTrend || []} />
         <VehicleModelChart data={dashboard?.modelDistribution || []} />
       </div>
 
-      {/* Charts Row 2 & Activities */}
+      {/* Charts Row 2 + Activities */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <ProductionStatusChart data={dashboard?.statusDistribution || []} />
         <CostBreakdownChart data={dashboard?.costBreakdown || { material: 0, labor: 0, overhead: 0 }} />
         
         {/* Recent Activities */}
-        <div 
-          className="rounded-lg p-5"
-          style={{ backgroundColor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
-        >
-          <h3 className="text-sm font-semibold mb-4" style={{ color: '#111827' }}>Recent Activities</h3>
+        <div className="rounded-lg p-5 bg-card shadow-sm">
+          <h3 className="text-sm font-semibold text-foreground mb-4">Recent Activities</h3>
           <div className="space-y-3">
             {(dashboard?.activities || []).map((activity) => (
               <div key={activity.id} className="flex items-start gap-3">
                 <div className={`w-2 h-2 rounded-full mt-2 ${getActivityColor(activity.type)}`} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium" style={{ color: '#111827' }}>{activity.action}</p>
-                  <p className="text-xs truncate" style={{ color: '#6B7280' }}>{activity.details}</p>
-                  <p className="text-xs mt-1" style={{ color: '#9CA3AF' }}>
+                  <p className="text-sm font-medium text-foreground">{activity.action}</p>
+                  <p className="text-xs text-muted-foreground truncate">{activity.details}</p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">
                     {new Date(activity.createdAt).toLocaleString()}
                   </p>
                 </div>
               </div>
             ))}
             {(!dashboard?.activities || dashboard.activities.length === 0) && (
-              <p className="text-sm text-center" style={{ color: '#6B7280' }}>No recent activities</p>
+              <p className="text-sm text-center text-muted-foreground">No recent activities</p>
             )}
           </div>
         </div>

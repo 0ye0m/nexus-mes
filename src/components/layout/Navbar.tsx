@@ -1,55 +1,102 @@
 'use client';
 
 import { useAuthStore } from '@/store/authStore';
-import { Bell, Search, Settings } from 'lucide-react';
+import { Menu, Bell, Settings, Moon, Sun, Search } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { useState } from 'react';
 
-export default function Navbar() {
+interface NavbarProps {
+  onMenuClick: () => void;
+}
+
+export default function Navbar({ onMenuClick }: NavbarProps) {
   const { user } = useAuthStore();
+  const { theme, setTheme } = useTheme();
+  const [searchOpen, setSearchOpen] = useState(false);
 
   return (
-    <header 
-      className="fixed top-0 left-64 right-0 h-16 flex items-center justify-between px-6 z-10"
-      style={{ backgroundColor: 'white', borderBottom: '1px solid #E5E7EB' }}
-    >
-      {/* Search */}
-      <div className="flex items-center gap-4">
-        <div className="relative">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+    <header className="fixed top-0 left-0 right-0 h-16 bg-card border-b border-border z-20">
+      <div className="flex items-center h-full px-4">
+
+        {/* Left */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onMenuClick}
+            className="md:hidden p-2 rounded-lg hover:bg-muted transition-colors"
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+
+          {/* Mobile search button */}
+          <button
+            onClick={() => setSearchOpen(!searchOpen)}
+            className="md:hidden p-2 rounded-lg hover:bg-muted"
+          >
+            <Search size={20} />
+          </button>
+        </div>
+
+        {/* Search bar (desktop) */}
+        <div className="hidden md:flex items-center ml-45 lg:ml-55 xl:ml-65">
+          <div className="relative">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="w-80 lg:w-96 h-9 pl-9 pr-4 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+        </div>
+
+        {/* Right */}
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="p-2 rounded-lg hover:bg-muted transition-colors"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
+          <button className="relative p-2 rounded-lg hover:bg-muted">
+            <Bell size={18} />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full"></span>
+          </button>
+
+          <button className="p-2 rounded-lg hover:bg-muted hidden sm:block">
+            <Settings size={18} />
+          </button>
+
+          <div className="flex items-center gap-2 ml-2">
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-medium">{user?.name}</p>
+              <p className="text-xs text-muted-foreground capitalize">
+                {user?.role.replace('_', ' ')}
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-medium">
+              {user?.name.split(' ').map(n => n[0]).join('')}
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Mobile search */}
+      {searchOpen && (
+        <div className="md:hidden p-3 border-t border-border bg-card">
           <input
             type="text"
             placeholder="Search..."
-            className="w-64 h-9 pl-10 pr-4 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="w-full h-10 px-4 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+            autoFocus
           />
         </div>
-      </div>
-
-      {/* Right Section */}
-      <div className="flex items-center gap-3">
-        {/* Notifications */}
-        <button className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
-          <Bell size={20} className="text-gray-600" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
-
-        {/* Settings */}
-        <button className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
-          <Settings size={20} className="text-gray-600" />
-        </button>
-
-        {/* Divider */}
-        <div className="w-px h-8 bg-gray-200 mx-2"></div>
-
-        {/* User Info */}
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <p className="text-sm font-medium" style={{ color: '#111827' }}>{user?.name}</p>
-            <p className="text-xs capitalize" style={{ color: '#6B7280' }}>{user?.role.replace('_', ' ')}</p>
-          </div>
-          <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-sm font-medium">
-            {user?.name.split(' ').map(n => n[0]).join('')}
-          </div>
-        </div>
-      </div>
+      )}
     </header>
   );
 }

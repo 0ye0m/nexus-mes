@@ -2,295 +2,254 @@
 
 import { useEffect, useState } from 'react';
 import { useAppStore } from '@/store/appStore';
-import { Plus, Pencil, AlertTriangle, X, Search, Loader2 } from 'lucide-react';
+import { Plus, Pencil, AlertTriangle, X, Search, Loader2, Package, TrendingDown, TrendingUp, Minus, Plus as PlusIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 const categoryOptions = [
-  { value: 'battery', label: 'Battery' },
-  { value: 'motor', label: 'Motor' },
-  { value: 'controller', label: 'Controller' },
-  { value: 'chassis', label: 'Chassis' },
-  { value: 'tires', label: 'Tires' },
-  { value: 'interior', label: 'Interior' },
-  { value: 'electronics', label: 'Electronics' },
+  { value: 'battery', label: 'Battery', icon: '🔋' },
+  { value: 'motor', label: 'Motor', icon: '⚙️' },
+  { value: 'controller', label: 'Controller', icon: '🎛️' },
+  { value: 'chassis', label: 'Chassis', icon: '🚗' },
+  { value: 'tires', label: 'Tires', icon: '🛞' },
+  { value: 'interior', label: 'Interior', icon: '🪑' },
+  { value: 'electronics', label: 'Electronics', icon: '💻' },
 ];
 
 export default function InventoryManagement() {
   const { materials, fetchMaterials, inventoryFilter, setInventoryFilter, searchQuery, setSearchQuery, loading } = useAppStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<any>(null);
-  const [stockUpdateModal, setStockUpdateModal] = useState<any>(null);
+  const [stockUpdateMaterial, setStockUpdateMaterial] = useState<any>(null);
+  const [stockDelta, setStockDelta] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
-    name: '',
-    sku: '',
-    category: 'battery',
-    quantity: 0,
-    unit: 'units',
-    minStock: 0,
-    unitCost: 0,
-    supplier: '',
-    supplierContact: '',
+    name: '', sku: '', category: 'battery', quantity: 0, unit: 'units', minStock: 0,
+    unitCost: 0, supplier: '', supplierContact: '',
   });
-
-  const [stockUpdate, setStockUpdate] = useState(0);
 
   useEffect(() => {
     fetchMaterials(inventoryFilter, searchQuery);
   }, [fetchMaterials, inventoryFilter, searchQuery]);
 
   const lowStockCount = materials.filter(m => m.quantity < m.minStock).length;
+  const totalValue = materials.reduce((sum, m) => sum + m.quantity * m.unitCost, 0);
 
   const resetForm = () => {
-    setFormData({
-      name: '',
-      sku: '',
-      category: 'battery',
-      quantity: 0,
-      unit: 'units',
-      minStock: 0,
-      unitCost: 0,
-      supplier: '',
-      supplierContact: '',
-    });
+    setFormData({ name: '', sku: '', category: 'battery', quantity: 0, unit: 'units', minStock: 0, unitCost: 0, supplier: '', supplierContact: '' });
     setEditingMaterial(null);
   };
 
-  const openAddModal = () => {
-    resetForm();
-    setIsModalOpen(true);
-  };
-
+  const openAddModal = () => { resetForm(); setIsModalOpen(true); };
   const openEditModal = (material: any) => {
     setEditingMaterial(material);
     setFormData({
-      name: material.name,
-      sku: material.sku,
-      category: material.category,
-      quantity: material.quantity,
-      unit: material.unit,
-      minStock: material.minStock,
-      unitCost: material.unitCost,
-      supplier: material.supplier,
-      supplierContact: material.supplierContact || '',
+      name: material.name, sku: material.sku, category: material.category, quantity: material.quantity,
+      unit: material.unit, minStock: material.minStock, unitCost: material.unitCost,
+      supplier: material.supplier, supplierContact: material.supplierContact || '',
     });
     setIsModalOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
+    e.preventDefault(); setIsSubmitting(true);
     try {
-      if (editingMaterial) {
-        const res = await fetch(`/api/materials/${editingMaterial.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
-        });
-        const data = await res.json();
-        if (data.success) {
-          toast.success('Material updated successfully');
-          fetchMaterials(inventoryFilter, searchQuery);
-        } else {
-          toast.error(data.message);
-        }
-      } else {
-        const res = await fetch('/api/materials', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
-        });
-        const data = await res.json();
-        if (data.success) {
-          toast.success('Material added successfully');
-          fetchMaterials(inventoryFilter, searchQuery);
-        } else {
-          toast.error(data.message);
-        }
-      }
-      setIsModalOpen(false);
-      resetForm();
-    } catch {
-      toast.error('An error occurred');
-    } finally {
-      setIsSubmitting(false);
-    }
+      const url = editingMaterial ? `/api/materials/${editingMaterial.id}` : '/api/materials';
+      const method = editingMaterial ? 'PUT' : 'POST';
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(editingMaterial ? 'Material updated' : 'Material added');
+        fetchMaterials(inventoryFilter, searchQuery);
+        setIsModalOpen(false); resetForm();
+      } else toast.error(data.message);
+    } catch { toast.error('Error occurred'); }
+    finally { setIsSubmitting(false); }
   };
 
   const handleStockUpdate = async () => {
-    if (stockUpdateModal) {
-      try {
-        const res = await fetch(`/api/materials/${stockUpdateModal.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ quantity: stockUpdate }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          toast.success('Stock updated successfully');
-          fetchMaterials(inventoryFilter, searchQuery);
-        } else {
-          toast.error(data.message);
-        }
-      } catch {
-        toast.error('Failed to update stock');
-      }
-      setStockUpdateModal(null);
-    }
-  };
-
-  const getCategoryBadge = (category: string) => {
-    const colors: Record<string, string> = {
-      battery: 'bg-green-100 text-green-700',
-      motor: 'bg-blue-100 text-blue-700',
-      controller: 'bg-purple-100 text-purple-700',
-      chassis: 'bg-orange-100 text-orange-700',
-      tires: 'bg-gray-100 text-gray-700',
-      interior: 'bg-pink-100 text-pink-700',
-      electronics: 'bg-cyan-100 text-cyan-700',
-    };
-    return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${colors[category] || 'bg-gray-100 text-gray-700'}`}>
-        {category}
-      </span>
-    );
+    if (!stockUpdateMaterial) return;
+    const newQuantity = Math.max(0, stockUpdateMaterial.quantity + stockDelta);
+    try {
+      const res = await fetch(`/api/materials/${stockUpdateMaterial.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity: newQuantity }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Stock updated to ${newQuantity}`);
+        fetchMaterials(inventoryFilter, searchQuery);
+        setStockUpdateMaterial(null);
+        setStockDelta(0);
+      } else toast.error(data.message);
+    } catch { toast.error('Failed to update stock'); }
   };
 
   const getStockStatus = (material: any) => {
-    if (material.quantity === 0) return <span className="text-xs font-medium text-red-600">Out of Stock</span>;
-    if (material.quantity < material.minStock) {
-      return (
-        <span className="flex items-center gap-1 text-xs font-medium text-orange-600">
-          <AlertTriangle size={12} /> Low Stock
-        </span>
-      );
-    }
-    return <span className="text-xs font-medium text-green-600">In Stock</span>;
+    if (material.quantity === 0) return { label: 'Out of Stock', color: 'text-red-600 bg-red-50 dark:bg-red-950/30' };
+    if (material.quantity < material.minStock) return { label: 'Low Stock', color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/30' };
+    return { label: 'In Stock', color: 'text-green-600 bg-green-50 dark:bg-green-950/30' };
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
+  const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(value);
 
-  if (loading.materials) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="animate-spin text-blue-600" size={32} />
-      </div>
-    );
-  }
+  if (loading.materials) return <div className="flex items-center justify-center h-64"><Loader2 className="animate-spin text-primary" size={32} /></div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold" style={{ color: '#111827' }}>Inventory Management</h1>
-          <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
-            Track raw materials and components
-            {lowStockCount > 0 && <span className="ml-2 text-orange-600 font-medium">({lowStockCount} items low stock)</span>}
-          </p>
+          <h1 className="text-2xl font-bold text-foreground">Inventory Management</h1>
+          <p className="text-muted-foreground mt-1">Track raw materials and components</p>
         </div>
-        <button onClick={openAddModal} className="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors hover:bg-blue-700" style={{ backgroundColor: '#2563EB' }}>
+        <button onClick={openAddModal} className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm">
           <Plus size={18} /> Add Material
         </button>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-xs">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search materials..." className="w-full h-9 pl-10 pr-4 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Total Items</p>
+            <Package size={18} className="text-muted-foreground" />
+          </div>
+          <p className="text-2xl font-bold text-foreground mt-1">{materials.length}</p>
         </div>
-        <select value={inventoryFilter} onChange={(e) => setInventoryFilter(e.target.value)} className="h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+        <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Low Stock Alerts</p>
+            <AlertTriangle size={18} className="text-orange-500" />
+          </div>
+          <p className="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">{lowStockCount}</p>
+        </div>
+        <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Inventory Value</p>
+            <TrendingUp size={18} className="text-green-500" />
+          </div>
+          <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{formatCurrency(totalValue)}</p>
+        </div>
+        <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Categories</p>
+            <Package size={18} className="text-muted-foreground" />
+          </div>
+          <p className="text-2xl font-bold text-foreground mt-1">{categoryOptions.length}</p>
+        </div>
+      </div>
+
+      {/* Search & Filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search materials..." className="w-full h-10 pl-9 pr-4 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+        </div>
+        <select value={inventoryFilter} onChange={(e) => setInventoryFilter(e.target.value)} className="h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-ring">
           <option value="all">All Categories</option>
-          {categoryOptions.map((option) => (<option key={option.value} value={option.value}>{option.label}</option>))}
+          {categoryOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
         </select>
       </div>
 
-      <div className="rounded-lg overflow-hidden" style={{ backgroundColor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b" style={{ borderColor: '#E5E7EB', backgroundColor: '#F9FAFB' }}>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: '#6B7280' }}>Material</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: '#6B7280' }}>SKU</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: '#6B7280' }}>Category</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: '#6B7280' }}>Quantity</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: '#6B7280' }}>Min Stock</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: '#6B7280' }}>Unit Cost</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: '#6B7280' }}>Supplier</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: '#6B7280' }}>Status</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: '#6B7280' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {materials.map((material) => (
-                <tr key={material.id} className="border-b hover:bg-gray-50" style={{ borderColor: '#E5E7EB' }}>
-                  <td className="px-4 py-3"><span className="text-sm font-medium" style={{ color: '#111827' }}>{material.name}</span></td>
-                  <td className="px-4 py-3"><span className="text-xs font-mono" style={{ color: '#6B7280' }}>{material.sku}</span></td>
-                  <td className="px-4 py-3">{getCategoryBadge(material.category)}</td>
-                  <td className="px-4 py-3"><span className="text-sm font-medium" style={{ color: '#111827' }}>{material.quantity.toLocaleString()} {material.unit}</span></td>
-                  <td className="px-4 py-3"><span className="text-sm" style={{ color: '#6B7280' }}>{material.minStock.toLocaleString()} {material.unit}</span></td>
-                  <td className="px-4 py-3"><span className="text-sm font-medium" style={{ color: '#111827' }}>{formatCurrency(material.unitCost)}</span></td>
-                  <td className="px-4 py-3"><div><p className="text-sm font-medium" style={{ color: '#111827' }}>{material.supplier}</p><p className="text-xs" style={{ color: '#9CA3AF' }}>{material.supplierContact}</p></div></td>
-                  <td className="px-4 py-3">{getStockStatus(material)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => { setStockUpdateModal(material); setStockUpdate(material.quantity); }} className="px-2 py-1 text-xs font-medium rounded border hover:bg-gray-50 transition-colors" style={{ borderColor: '#D1D5DB', color: '#374151' }}>Update Stock</button>
-                      <button onClick={() => openEditModal(material)} className="p-1.5 rounded hover:bg-gray-100 transition-colors"><Pencil size={16} style={{ color: '#6B7280' }} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {materials.length === 0 && (<div className="py-12 text-center"><p className="text-sm" style={{ color: '#6B7280' }}>No materials found</p></div>)}
+      {/* Materials Grid (Cards) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {materials.map((material) => {
+          const stockStatus = getStockStatus(material);
+          return (
+            <div key={material.id} className="bg-card rounded-xl p-5 shadow-sm border border-border hover:shadow-md transition-all">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xl">
+                    {categoryOptions.find(c => c.value === material.category)?.icon || '📦'}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">{material.name}</h3>
+                    <p className="text-xs text-muted-foreground font-mono">{material.sku}</p>
+                  </div>
+                </div>
+                <button onClick={() => openEditModal(material)} className="p-1.5 rounded-md hover:bg-muted transition-colors">
+                  <Pencil size={16} className="text-muted-foreground" />
+                </button>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-muted-foreground text-xs">Quantity</p>
+                  <p className="font-medium text-foreground">{material.quantity.toLocaleString()} {material.unit}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Min Stock</p>
+                  <p className="font-medium text-foreground">{material.minStock.toLocaleString()} {material.unit}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Unit Cost</p>
+                  <p className="font-medium text-foreground">{formatCurrency(material.unitCost)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Supplier</p>
+                  <p className="font-medium text-foreground truncate">{material.supplier}</p>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <span className={`text-xs px-2 py-1 rounded-full ${stockStatus.color}`}>{stockStatus.label}</span>
+                <button onClick={() => { setStockUpdateMaterial(material); setStockDelta(0); }} className="text-xs bg-muted hover:bg-muted/80 px-3 py-1.5 rounded-full transition-colors">Update Stock</button>
+              </div>
+            </div>
+          );
+        })}
+        {materials.length === 0 && (
+          <div className="col-span-full text-center py-12 bg-card rounded-xl border border-dashed">
+            <Package size={32} className="mx-auto text-muted-foreground mb-2" />
+            <p className="text-muted-foreground">No materials found</p>
+          </div>
+        )}
       </div>
 
-      {/* Modals */}
+      {/* Add/Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white" style={{ borderColor: '#E5E7EB' }}>
-              <h2 className="text-lg font-semibold" style={{ color: '#111827' }}>{editingMaterial ? 'Edit Material' : 'Add New Material'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-gray-100 rounded"><X size={20} style={{ color: '#6B7280' }} /></button>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-xl">
+            <div className="sticky top-0 bg-card border-b border-border px-5 py-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-foreground">{editingMaterial ? 'Edit Material' : 'Add New Material'}</h2>
+              <button onClick={() => setIsModalOpen(false)} className="p-1 rounded-md hover:bg-muted"><X size={20} className="text-muted-foreground" /></button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2"><label className="block text-sm font-medium mb-1.5" style={{ color: '#111827' }}>Material Name *</label><input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full h-10 px-3 rounded-lg border text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" style={{ borderColor: '#D1D5DB' }} required /></div>
-                <div><label className="block text-sm font-medium mb-1.5" style={{ color: '#111827' }}>SKU *</label><input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} className="w-full h-10 px-3 rounded-lg border text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" style={{ borderColor: '#D1D5DB' }} required disabled={!!editingMaterial} /></div>
-                <div><label className="block text-sm font-medium mb-1.5" style={{ color: '#111827' }}>Category</label><select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full h-10 px-3 rounded-lg border text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" style={{ borderColor: '#D1D5DB' }}>{categoryOptions.map((option) => (<option key={option.value} value={option.value}>{option.label}</option>))}</select></div>
-                <div><label className="block text-sm font-medium mb-1.5" style={{ color: '#111827' }}>Quantity</label><input type="number" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })} className="w-full h-10 px-3 rounded-lg border text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" style={{ borderColor: '#D1D5DB' }} min="0" /></div>
-                <div><label className="block text-sm font-medium mb-1.5" style={{ color: '#111827' }}>Unit</label><input type="text" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} className="w-full h-10 px-3 rounded-lg border text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" style={{ borderColor: '#D1D5DB' }} /></div>
-                <div><label className="block text-sm font-medium mb-1.5" style={{ color: '#111827' }}>Minimum Stock</label><input type="number" value={formData.minStock} onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value) || 0 })} className="w-full h-10 px-3 rounded-lg border text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" style={{ borderColor: '#D1D5DB' }} min="0" /></div>
-                <div><label className="block text-sm font-medium mb-1.5" style={{ color: '#111827' }}>Unit Cost ($)</label><input type="number" value={formData.unitCost} onChange={(e) => setFormData({ ...formData, unitCost: parseFloat(e.target.value) || 0 })} className="w-full h-10 px-3 rounded-lg border text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" style={{ borderColor: '#D1D5DB' }} min="0" step="0.01" /></div>
-                <div><label className="block text-sm font-medium mb-1.5" style={{ color: '#111827' }}>Supplier *</label><input type="text" value={formData.supplier} onChange={(e) => setFormData({ ...formData, supplier: e.target.value })} className="w-full h-10 px-3 rounded-lg border text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" style={{ borderColor: '#D1D5DB' }} required /></div>
-                <div><label className="block text-sm font-medium mb-1.5" style={{ color: '#111827' }}>Supplier Contact</label><input type="text" value={formData.supplierContact} onChange={(e) => setFormData({ ...formData, supplierContact: e.target.value })} className="w-full h-10 px-3 rounded-lg border text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" style={{ borderColor: '#D1D5DB' }} /></div>
+                <div className="col-span-2"><label className="block text-sm font-medium mb-1.5">Material Name *</label><input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-1 focus:ring-ring" required /></div>
+                <div className="col-span-2"><label className="block text-sm font-medium mb-1.5">SKU *</label><input type="text" value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-1 focus:ring-ring" required disabled={!!editingMaterial} /></div>
+                <div><label className="block text-sm font-medium mb-1.5">Category</label><select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm">{categoryOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></div>
+                <div><label className="block text-sm font-medium mb-1.5">Unit</label><input type="text" value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value})} className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm" /></div>
+                <div><label className="block text-sm font-medium mb-1.5">Quantity</label><input type="number" value={formData.quantity} onChange={e => setFormData({...formData, quantity: parseInt(e.target.value) || 0})} className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm" min="0" /></div>
+                <div><label className="block text-sm font-medium mb-1.5">Min Stock</label><input type="number" value={formData.minStock} onChange={e => setFormData({...formData, minStock: parseInt(e.target.value) || 0})} className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm" min="0" /></div>
+                <div><label className="block text-sm font-medium mb-1.5">Unit Cost ($)</label><input type="number" value={formData.unitCost} onChange={e => setFormData({...formData, unitCost: parseFloat(e.target.value) || 0})} className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm" min="0" step="0.01" /></div>
+                <div><label className="block text-sm font-medium mb-1.5">Supplier *</label><input type="text" value={formData.supplier} onChange={e => setFormData({...formData, supplier: e.target.value})} className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm" required /></div>
+                <div><label className="block text-sm font-medium mb-1.5">Supplier Contact</label><input type="text" value={formData.supplierContact} onChange={e => setFormData({...formData, supplierContact: e.target.value})} className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm" /></div>
               </div>
               <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors" style={{ borderColor: '#D1D5DB', color: '#374151' }}>Cancel</button>
-                <button type="submit" disabled={isSubmitting} className="px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors hover:bg-blue-700 disabled:opacity-50" style={{ backgroundColor: '#2563EB' }}>{isSubmitting ? 'Saving...' : (editingMaterial ? 'Update Material' : 'Add Material')}</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-lg border border-input text-foreground text-sm font-medium hover:bg-muted">Cancel</button>
+                <button type="submit" disabled={isSubmitting} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50">{isSubmitting ? 'Saving...' : (editingMaterial ? 'Update' : 'Add')}</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {stockUpdateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-sm mx-4 p-6">
-            <h3 className="text-lg font-semibold mb-2" style={{ color: '#111827' }}>Update Stock</h3>
-            <p className="text-sm mb-4" style={{ color: '#6B7280' }}>{stockUpdateModal.name} (Current: {stockUpdateModal.quantity} {stockUpdateModal.unit})</p>
-            <div className="mb-4"><label className="block text-sm font-medium mb-1.5" style={{ color: '#111827' }}>New Quantity</label><input type="number" value={stockUpdate} onChange={(e) => setStockUpdate(parseInt(e.target.value) || 0)} className="w-full h-10 px-3 rounded-lg border text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" style={{ borderColor: '#D1D5DB' }} min="0" /></div>
+      {/* Stock Update Modal */}
+      {stockUpdateMaterial && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-xl w-full max-w-sm p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Update Stock</h3>
+            <p className="text-sm text-muted-foreground mb-4">{stockUpdateMaterial.name} · Current: {stockUpdateMaterial.quantity} {stockUpdateMaterial.unit}</p>
+            <div className="flex items-center gap-3 mb-4">
+              <button onClick={() => setStockDelta(prev => prev - 1)} className="w-10 h-10 rounded-full border border-input flex items-center justify-center hover:bg-muted"><Minus size={18} /></button>
+              <span className="text-xl font-semibold text-foreground w-16 text-center">{stockDelta}</span>
+              <button onClick={() => setStockDelta(prev => prev + 1)} className="w-10 h-10 rounded-full border border-input flex items-center justify-center hover:bg-muted"><PlusIcon size={18} /></button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">New quantity: {Math.max(0, stockUpdateMaterial.quantity + stockDelta)}</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setStockUpdateModal(null)} className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors" style={{ borderColor: '#D1D5DB', color: '#374151' }}>Cancel</button>
-              <button onClick={handleStockUpdate} className="px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors hover:bg-blue-700" style={{ backgroundColor: '#2563EB' }}>Update</button>
+              <button onClick={() => setStockUpdateMaterial(null)} className="px-4 py-2 rounded-lg border border-input text-foreground text-sm font-medium hover:bg-muted">Cancel</button>
+              <button onClick={handleStockUpdate} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90">Apply</button>
             </div>
           </div>
         </div>
